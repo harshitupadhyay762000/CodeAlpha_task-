@@ -1,0 +1,789 @@
+# Exploratory Data Analysis (EDA) - Task 2
+# Complete Python Code with Step-by-Step Implementation
+
+## Setup and Imports
+
+```python
+# Import necessary libraries
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import warnings
+from scipy import stats
+from scipy.stats import pearsonr, spearmanr, ttest_ind, f_oneway
+
+# Suppress warnings for cleaner output
+warnings.filterwarnings('ignore')
+
+# Set visualization style
+sns.set_style('whitegrid')
+plt.rcParams['figure.figsize'] = (12, 6)
+plt.rcParams['font.size'] = 10
+
+print("âœ… All libraries imported successfully!")
+```
+
+---
+
+## Step 1: Data Collection and Loading
+
+```python
+# Load the dataset
+df = pd.read_csv('amazon_reviews_sample.csv')
+
+print("=" * 70)
+print("STEP 1: DATA COLLECTION AND LOADING")
+print("=" * 70)
+print(f"\nâœ… Dataset loaded successfully!")
+print(f"Dataset shape: {df.shape[0]} rows Ã— {df.shape[1]} columns")
+```
+
+---
+
+## Step 2: Initial Data Inspection
+
+```python
+print("\n" + "=" * 70)
+print("STEP 2: INITIAL DATA INSPECTION")
+print("=" * 70)
+
+# Display first 10 rows
+print("\nðŸ“Š First 10 rows of the dataset:")
+print(df.head(10))
+
+# Display last 5 rows
+print("\nðŸ“Š Last 5 rows of the dataset:")
+print(df.tail())
+
+# Dataset information
+print("\nðŸ“Š Dataset Information:")
+print(df.info())
+
+# Check data types
+print("\nðŸ“Š Data Types:")
+print(df.dtypes)
+
+# Check column names
+print("\nðŸ“Š Column Names:")
+print(df.columns.tolist())
+
+# Check dimensions
+print(f"\nðŸ“Š Number of rows: {df.shape[0]}")
+print(f"ðŸ“Š Number of columns: {df.shape[1]}")
+```
+
+---
+
+## Step 3: Data Quality Assessment
+
+```python
+print("\n" + "=" * 70)
+print("STEP 3: DATA QUALITY ASSESSMENT")
+print("=" * 70)
+
+# Check for missing values
+print("\nðŸ” Missing Values Count:")
+missing_values = df.isnull().sum()
+missing_percentage = (missing_values / len(df)) * 100
+missing_df = pd.DataFrame({
+    'Column': df.columns,
+    'Missing Count': missing_values.values,
+    'Percentage (%)': missing_percentage.values.round(2)
+})
+print(missing_df)
+
+# Check for duplicates
+print(f"\nðŸ” Duplicate Rows: {df.duplicated().sum()}")
+
+# Check for unique values in each column
+print("\nðŸ” Unique Values Count:")
+for col in df.columns:
+    print(f"  â€¢ {col}: {df[col].nunique()} unique values")
+
+# Check data completeness
+total_cells = df.shape[0] * df.shape[1]
+missing_cells = df.isnull().sum().sum()
+print(f"\nðŸ” Data Completeness: {((total_cells - missing_cells) / total_cells * 100):.2f}%")
+```
+
+---
+
+## Step 4: Descriptive Statistics
+
+```python
+print("\n" + "=" * 70)
+print("STEP 4: DESCRIPTIVE STATISTICS")
+print("=" * 70)
+
+# Statistical summary for numerical columns
+print("\nðŸ“ˆ Statistical Summary (Numerical Columns):")
+print(df.describe())
+
+# Statistical summary for categorical columns
+print("\nðŸ“ˆ Statistical Summary (Categorical Columns):")
+print(df.describe(include=['object', 'bool']))
+
+# Measures of central tendency
+print("\nðŸ“ˆ Measures of Central Tendency:")
+numerical_cols = df.select_dtypes(include=[np.number]).columns
+for col in numerical_cols:
+    print(f"\n{col}:")
+    print(f"  â€¢ Mean: {df[col].mean():.2f}")
+    print(f"  â€¢ Median: {df[col].median():.2f}")
+    print(f"  â€¢ Mode: {df[col].mode().values[0]}")
+
+# Measures of dispersion
+print("\nðŸ“ˆ Measures of Dispersion:")
+for col in numerical_cols:
+    print(f"\n{col}:")
+    print(f"  â€¢ Standard Deviation: {df[col].std():.2f}")
+    print(f"  â€¢ Variance: {df[col].var():.2f}")
+    print(f"  â€¢ Range: {df[col].max() - df[col].min():.2f}")
+    print(f"  â€¢ IQR: {df[col].quantile(0.75) - df[col].quantile(0.25):.2f}")
+```
+
+---
+
+## Step 5: Data Cleaning
+
+```python
+print("\n" + "=" * 70)
+print("STEP 5: DATA CLEANING")
+print("=" * 70)
+
+# Create a copy for cleaning
+df_clean = df.copy()
+
+# 5.1 Handle Missing Values
+print("\nðŸ§¹ Handling Missing Values...")
+print(f"Before: {df_clean.isnull().sum().sum()} missing values")
+
+# Impute missing values with median for numerical columns
+for col in ['helpful_votes', 'discount_percentage']:
+    if df_clean[col].isnull().any():
+        median_value = df_clean[col].median()
+        df_clean[col].fillna(median_value, inplace=True)
+        print(f"  â€¢ Imputed {col} with median: {median_value:.2f}")
+
+print(f"After: {df_clean.isnull().sum().sum()} missing values")
+
+# 5.2 Remove Duplicates
+print("\nðŸ§¹ Removing Duplicate Rows...")
+print(f"Before: {len(df_clean)} rows")
+df_clean = df_clean.drop_duplicates()
+print(f"After: {len(df_clean)} rows")
+print(f"Removed: {len(df) - len(df_clean)} duplicate rows")
+
+# 5.3 Data Type Conversion
+print("\nðŸ§¹ Converting Data Types...")
+df_clean['rating'] = df_clean['rating'].astype(int)
+df_clean['verified_purchase'] = df_clean['verified_purchase'].astype('category')
+print("  â€¢ Converted 'rating' to integer")
+print("  â€¢ Converted 'verified_purchase' to category")
+
+# 5.4 Reset index
+df_clean.reset_index(drop=True, inplace=True)
+
+print(f"\nâœ… Data cleaning complete!")
+print(f"Clean dataset shape: {df_clean.shape}")
+```
+
+---
+
+## Step 6: Outlier Detection
+
+```python
+print("\n" + "=" * 70)
+print("STEP 6: OUTLIER DETECTION")
+print("=" * 70)
+
+# Detect outliers using IQR method
+def detect_outliers_iqr(data, column):
+    Q1 = data[column].quantile(0.25)
+    Q3 = data[column].quantile(0.75)
+    IQR = Q3 - Q1
+    lower_bound = Q1 - 1.5 * IQR
+    upper_bound = Q3 + 1.5 * IQR
+    outliers = data[(data[column] < lower_bound) | (data[column] > upper_bound)]
+    return outliers, lower_bound, upper_bound
+
+# Check for outliers in numerical columns
+numerical_cols = ['rating', 'review_length', 'helpful_votes', 'price', 
+                  'num_reviews', 'discount_percentage', 'delivery_days']
+
+for col in numerical_cols:
+    outliers, lower, upper = detect_outliers_iqr(df_clean, col)
+    print(f"\n{col}:")
+    print(f"  â€¢ Lower Bound: {lower:.2f}")
+    print(f"  â€¢ Upper Bound: {upper:.2f}")
+    print(f"  â€¢ Number of Outliers: {len(outliers)}")
+    print(f"  â€¢ Percentage: {(len(outliers)/len(df_clean)*100):.2f}%")
+```
+
+---
+
+## Step 7: Univariate Analysis - Visualizations
+
+```python
+print("\n" + "=" * 70)
+print("STEP 7: UNIVARIATE ANALYSIS - VISUALIZATIONS")
+print("=" * 70)
+
+# 7.1 Distribution of Ratings
+plt.figure(figsize=(14, 6))
+
+plt.subplot(1, 2, 1)
+rating_counts = df_clean['rating'].value_counts().sort_index()
+plt.bar(rating_counts.index, rating_counts.values, color='skyblue', edgecolor='black')
+plt.xlabel('Rating', fontsize=12)
+plt.ylabel('Frequency', fontsize=12)
+plt.title('Distribution of Product Ratings', fontsize=14, fontweight='bold')
+plt.xticks([1, 2, 3, 4, 5])
+plt.grid(axis='y', alpha=0.3)
+
+plt.subplot(1, 2, 2)
+plt.pie(rating_counts.values, labels=rating_counts.index, autopct='%1.1f%%', 
+        colors=sns.color_palette('Set2'), startangle=90)
+plt.title('Rating Distribution (Pie Chart)', fontsize=14, fontweight='bold')
+
+plt.tight_layout()
+plt.savefig('rating_distribution.png', dpi=300, bbox_inches='tight')
+plt.show()
+
+print("âœ… Rating distribution plots created")
+
+# 7.2 Distribution of Review Length
+plt.figure(figsize=(14, 6))
+
+plt.subplot(1, 2, 1)
+plt.hist(df_clean['review_length'], bins=30, color='lightcoral', edgecolor='black', alpha=0.7)
+plt.xlabel('Review Length (characters)', fontsize=12)
+plt.ylabel('Frequency', fontsize=12)
+plt.title('Distribution of Review Length', fontsize=14, fontweight='bold')
+plt.axvline(df_clean['review_length'].mean(), color='red', linestyle='--', 
+            linewidth=2, label=f'Mean: {df_clean["review_length"].mean():.1f}')
+plt.axvline(df_clean['review_length'].median(), color='green', linestyle='--', 
+            linewidth=2, label=f'Median: {df_clean["review_length"].median():.1f}')
+plt.legend()
+plt.grid(axis='y', alpha=0.3)
+
+plt.subplot(1, 2, 2)
+plt.boxplot(df_clean['review_length'], vert=True)
+plt.ylabel('Review Length (characters)', fontsize=12)
+plt.title('Box Plot of Review Length', fontsize=14, fontweight='bold')
+plt.grid(axis='y', alpha=0.3)
+
+plt.tight_layout()
+plt.savefig('review_length_distribution.png', dpi=300, bbox_inches='tight')
+plt.show()
+
+print("âœ… Review length distribution plots created")
+
+# 7.3 Distribution of Product Categories
+plt.figure(figsize=(12, 6))
+
+category_counts = df_clean['product_category'].value_counts()
+plt.bar(category_counts.index, category_counts.values, color='lightgreen', edgecolor='black')
+plt.xlabel('Product Category', fontsize=12)
+plt.ylabel('Frequency', fontsize=12)
+plt.title('Distribution of Product Categories', fontsize=14, fontweight='bold')
+plt.xticks(rotation=45, ha='right')
+plt.grid(axis='y', alpha=0.3)
+
+plt.tight_layout()
+plt.savefig('category_distribution.png', dpi=300, bbox_inches='tight')
+plt.show()
+
+print("âœ… Category distribution plot created")
+
+# 7.4 Distribution of Price
+plt.figure(figsize=(14, 6))
+
+plt.subplot(1, 2, 1)
+plt.hist(df_clean['price'], bins=30, color='gold', edgecolor='black', alpha=0.7)
+plt.xlabel('Price ($)', fontsize=12)
+plt.ylabel('Frequency', fontsize=12)
+plt.title('Distribution of Product Price', fontsize=14, fontweight='bold')
+plt.axvline(df_clean['price'].mean(), color='red', linestyle='--', 
+            linewidth=2, label=f'Mean: ${df_clean["price"].mean():.2f}')
+plt.legend()
+plt.grid(axis='y', alpha=0.3)
+
+plt.subplot(1, 2, 2)
+sns.boxplot(y=df_clean['price'], color='gold')
+plt.ylabel('Price ($)', fontsize=12)
+plt.title('Box Plot of Product Price', fontsize=14, fontweight='bold')
+plt.grid(axis='y', alpha=0.3)
+
+plt.tight_layout()
+plt.savefig('price_distribution.png', dpi=300, bbox_inches='tight')
+plt.show()
+
+print("âœ… Price distribution plots created")
+
+# 7.5 Distribution of Helpful Votes
+plt.figure(figsize=(12, 6))
+
+plt.hist(df_clean['helpful_votes'], bins=30, color='mediumpurple', edgecolor='black', alpha=0.7)
+plt.xlabel('Helpful Votes', fontsize=12)
+plt.ylabel('Frequency', fontsize=12)
+plt.title('Distribution of Helpful Votes', fontsize=14, fontweight='bold')
+plt.axvline(df_clean['helpful_votes'].mean(), color='red', linestyle='--', 
+            linewidth=2, label=f'Mean: {df_clean["helpful_votes"].mean():.1f}')
+plt.legend()
+plt.grid(axis='y', alpha=0.3)
+
+plt.tight_layout()
+plt.savefig('helpful_votes_distribution.png', dpi=300, bbox_inches='tight')
+plt.show()
+
+print("âœ… Helpful votes distribution plot created")
+```
+
+---
+
+## Step 8: Bivariate Analysis - Relationships
+
+```python
+print("\n" + "=" * 70)
+print("STEP 8: BIVARIATE ANALYSIS - RELATIONSHIPS")
+print("=" * 70)
+
+# 8.1 Rating vs Review Length
+plt.figure(figsize=(12, 6))
+
+plt.subplot(1, 2, 1)
+plt.scatter(df_clean['review_length'], df_clean['rating'], alpha=0.5, color='steelblue')
+plt.xlabel('Review Length (characters)', fontsize=12)
+plt.ylabel('Rating', fontsize=12)
+plt.title('Rating vs Review Length', fontsize=14, fontweight='bold')
+plt.grid(alpha=0.3)
+
+# Calculate correlation
+corr, p_value = pearsonr(df_clean['review_length'], df_clean['rating'])
+plt.text(0.05, 0.95, f'Correlation: {corr:.3f}\np-value: {p_value:.4f}', 
+         transform=plt.gca().transAxes, verticalalignment='top',
+         bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+
+plt.subplot(1, 2, 2)
+sns.boxplot(x='rating', y='review_length', data=df_clean, palette='Set2')
+plt.xlabel('Rating', fontsize=12)
+plt.ylabel('Review Length (characters)', fontsize=12)
+plt.title('Review Length by Rating', fontsize=14, fontweight='bold')
+plt.grid(axis='y', alpha=0.3)
+
+plt.tight_layout()
+plt.savefig('rating_vs_review_length.png', dpi=300, bbox_inches='tight')
+plt.show()
+
+print(f"âœ… Correlation between Rating and Review Length: {corr:.3f} (p={p_value:.4f})")
+
+# 8.2 Price vs Number of Reviews
+plt.figure(figsize=(12, 6))
+
+plt.scatter(df_clean['price'], df_clean['num_reviews'], alpha=0.5, color='coral')
+plt.xlabel('Price ($)', fontsize=12)
+plt.ylabel('Number of Reviews', fontsize=12)
+plt.title('Price vs Number of Reviews', fontsize=14, fontweight='bold')
+plt.grid(alpha=0.3)
+
+# Calculate correlation
+corr2, p_value2 = pearsonr(df_clean['price'], df_clean['num_reviews'])
+plt.text(0.05, 0.95, f'Correlation: {corr2:.3f}\np-value: {p_value2:.4f}', 
+         transform=plt.gca().transAxes, verticalalignment='top',
+         bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+
+plt.tight_layout()
+plt.savefig('price_vs_num_reviews.png', dpi=300, bbox_inches='tight')
+plt.show()
+
+print(f"âœ… Correlation between Price and Number of Reviews: {corr2:.3f} (p={p_value2:.4f})")
+
+# 8.3 Rating by Product Category
+plt.figure(figsize=(12, 6))
+
+sns.boxplot(x='product_category', y='rating', data=df_clean, palette='Set3')
+plt.xlabel('Product Category', fontsize=12)
+plt.ylabel('Rating', fontsize=12)
+plt.title('Rating Distribution by Product Category', fontsize=14, fontweight='bold')
+plt.xticks(rotation=45, ha='right')
+plt.grid(axis='y', alpha=0.3)
+
+plt.tight_layout()
+plt.savefig('rating_by_category.png', dpi=300, bbox_inches='tight')
+plt.show()
+
+print("âœ… Rating by category plot created")
+
+# 8.4 Verified Purchase vs Rating
+plt.figure(figsize=(12, 6))
+
+plt.subplot(1, 2, 1)
+verified_ratings = df_clean.groupby('verified_purchase')['rating'].mean()
+plt.bar(['Non-Verified', 'Verified'], verified_ratings.values, color=['salmon', 'lightgreen'], edgecolor='black')
+plt.ylabel('Average Rating', fontsize=12)
+plt.title('Average Rating by Verification Status', fontsize=14, fontweight='bold')
+plt.ylim(0, 5)
+plt.grid(axis='y', alpha=0.3)
+
+# Add value labels
+for i, v in enumerate(verified_ratings.values):
+    plt.text(i, v + 0.1, f'{v:.2f}', ha='center', fontweight='bold')
+
+plt.subplot(1, 2, 2)
+sns.boxplot(x='verified_purchase', y='rating', data=df_clean, palette=['salmon', 'lightgreen'])
+plt.xlabel('Verified Purchase', fontsize=12)
+plt.ylabel('Rating', fontsize=12)
+plt.title('Rating Distribution by Verification Status', fontsize=14, fontweight='bold')
+plt.grid(axis='y', alpha=0.3)
+
+plt.tight_layout()
+plt.savefig('verified_vs_rating.png', dpi=300, bbox_inches='tight')
+plt.show()
+
+print("âœ… Verification status vs rating plots created")
+
+# 8.5 Discount vs Rating
+plt.figure(figsize=(12, 6))
+
+plt.scatter(df_clean['discount_percentage'], df_clean['rating'], alpha=0.5, color='orange')
+plt.xlabel('Discount Percentage (%)', fontsize=12)
+plt.ylabel('Rating', fontsize=12)
+plt.title('Discount Percentage vs Rating', fontsize=14, fontweight='bold')
+plt.grid(alpha=0.3)
+
+# Calculate correlation
+corr3, p_value3 = pearsonr(df_clean['discount_percentage'], df_clean['rating'])
+plt.text(0.05, 0.95, f'Correlation: {corr3:.3f}\np-value: {p_value3:.4f}', 
+         transform=plt.gca().transAxes, verticalalignment='top',
+         bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+
+plt.tight_layout()
+plt.savefig('discount_vs_rating.png', dpi=300, bbox_inches='tight')
+plt.show()
+
+print(f"âœ… Correlation between Discount and Rating: {corr3:.3f} (p={p_value3:.4f})")
+```
+
+---
+
+## Step 9: Multivariate Analysis - Correlation Matrix
+
+```python
+print("\n" + "=" * 70)
+print("STEP 9: MULTIVARIATE ANALYSIS - CORRELATION MATRIX")
+print("=" * 70)
+
+# Select numerical columns for correlation analysis
+numerical_features = ['rating', 'review_length', 'helpful_votes', 'price', 
+                      'num_reviews', 'discount_percentage', 'delivery_days']
+
+# Calculate correlation matrix
+correlation_matrix = df_clean[numerical_features].corr()
+
+print("\nðŸ“Š Correlation Matrix:")
+print(correlation_matrix.round(3))
+
+# Visualize correlation matrix with heatmap
+plt.figure(figsize=(12, 10))
+
+sns.heatmap(correlation_matrix, annot=True, fmt='.3f', cmap='coolwarm', 
+            center=0, square=True, linewidths=1, cbar_kws={"shrink": 0.8})
+plt.title('Correlation Heatmap of Numerical Features', fontsize=16, fontweight='bold', pad=20)
+plt.xticks(rotation=45, ha='right')
+plt.yticks(rotation=0)
+
+plt.tight_layout()
+plt.savefig('correlation_heatmap.png', dpi=300, bbox_inches='tight')
+plt.show()
+
+print("âœ… Correlation heatmap created")
+
+# Identify strong correlations
+print("\nðŸ” Strong Correlations (|r| > 0.3):")
+for i in range(len(correlation_matrix.columns)):
+    for j in range(i+1, len(correlation_matrix.columns)):
+        if abs(correlation_matrix.iloc[i, j]) > 0.3:
+            print(f"  â€¢ {correlation_matrix.columns[i]} <-> {correlation_matrix.columns[j]}: {correlation_matrix.iloc[i, j]:.3f}")
+```
+
+---
+
+## Step 10: Pair Plot for Multiple Variables
+
+```python
+print("\n" + "=" * 70)
+print("STEP 10: PAIR PLOT FOR MULTIPLE VARIABLES")
+print("=" * 70)
+
+# Select key variables for pair plot
+key_vars = ['rating', 'review_length', 'helpful_votes', 'price']
+
+# Create pair plot
+pairplot = sns.pairplot(df_clean[key_vars], diag_kind='hist', corner=True, 
+                        plot_kws={'alpha': 0.5, 'edgecolor': 'k'}, 
+                        diag_kws={'edgecolor': 'k', 'alpha': 0.7})
+pairplot.fig.suptitle('Pair Plot of Key Variables', y=1.02, fontsize=16, fontweight='bold')
+
+plt.savefig('pairplot.png', dpi=300, bbox_inches='tight')
+plt.show()
+
+print("âœ… Pair plot created")
+```
+
+---
+
+## Step 11: Statistical Hypothesis Testing
+
+```python
+print("\n" + "=" * 70)
+print("STEP 11: STATISTICAL HYPOTHESIS TESTING")
+print("=" * 70)
+
+# Test 1: Rating difference between verified and non-verified purchases
+print("\nðŸ“Š Test 1: Independent Samples T-Test")
+print("Hâ‚€: No difference in ratings between verified and non-verified purchases")
+print("Hâ‚: Significant difference in ratings")
+
+verified_ratings = df_clean[df_clean['verified_purchase'] == True]['rating']
+non_verified_ratings = df_clean[df_clean['verified_purchase'] == False]['rating']
+
+t_stat, p_value_ttest = ttest_ind(verified_ratings, non_verified_ratings)
+
+print(f"\nResults:")
+print(f"  â€¢ Verified purchases mean rating: {verified_ratings.mean():.3f}")
+print(f"  â€¢ Non-verified purchases mean rating: {non_verified_ratings.mean():.3f}")
+print(f"  â€¢ t-statistic: {t_stat:.3f}")
+print(f"  â€¢ p-value: {p_value_ttest:.4f}")
+print(f"  â€¢ Decision: {'Reject Hâ‚€' if p_value_ttest < 0.05 else 'Fail to reject Hâ‚€'} (Î± = 0.05)")
+
+# Test 2: Rating differences across categories (ANOVA)
+print("\n\nðŸ“Š Test 2: One-Way ANOVA")
+print("Hâ‚€: All product categories have the same mean rating")
+print("Hâ‚: At least one category has different mean rating")
+
+category_groups = [df_clean[df_clean['product_category'] == cat]['rating'] 
+                   for cat in df_clean['product_category'].unique()]
+
+f_stat, p_value_anova = f_oneway(*category_groups)
+
+print(f"\nResults:")
+for cat in df_clean['product_category'].unique():
+    mean_rating = df_clean[df_clean['product_category'] == cat]['rating'].mean()
+    print(f"  â€¢ {cat} mean rating: {mean_rating:.3f}")
+print(f"\n  â€¢ F-statistic: {f_stat:.3f}")
+print(f"  â€¢ p-value: {p_value_anova:.4f}")
+print(f"  â€¢ Decision: {'Reject Hâ‚€' if p_value_anova < 0.05 else 'Fail to reject Hâ‚€'} (Î± = 0.05)")
+
+# Test 3: Correlation significance test
+print("\n\nðŸ“Š Test 3: Pearson Correlation Test")
+print("Hâ‚€: No correlation between review length and rating")
+print("Hâ‚: Significant correlation exists")
+
+corr_coef, p_value_corr = pearsonr(df_clean['review_length'], df_clean['rating'])
+
+print(f"\nResults:")
+print(f"  â€¢ Correlation coefficient (r): {corr_coef:.3f}")
+print(f"  â€¢ p-value: {p_value_corr:.4f}")
+print(f"  â€¢ Decision: {'Reject Hâ‚€' if p_value_corr < 0.05 else 'Fail to reject Hâ‚€'} (Î± = 0.05)")
+print(f"  â€¢ Interpretation: {'Significant' if p_value_corr < 0.05 else 'Not significant'} correlation")
+```
+
+---
+
+## Step 12: Key Insights Summary
+
+```python
+print("\n" + "=" * 70)
+print("STEP 12: KEY INSIGHTS SUMMARY")
+print("=" * 70)
+
+print("\nðŸŽ¯ Key Findings:")
+
+print("\n1. Rating Distribution:")
+print(f"   â€¢ Mean rating: {df_clean['rating'].mean():.2f}/5.0")
+print(f"   â€¢ Median rating: {df_clean['rating'].median():.0f}")
+print(f"   â€¢ Most common rating: {df_clean['rating'].mode().values[0]}")
+print(f"   â€¢ Rating 4-5 stars: {(df_clean['rating'] >= 4).sum() / len(df_clean) * 100:.1f}%")
+
+print("\n2. Customer Behavior:")
+print(f"   â€¢ Average review length: {df_clean['review_length'].mean():.0f} characters")
+print(f"   â€¢ Average helpful votes: {df_clean['helpful_votes'].mean():.1f}")
+print(f"   â€¢ Verified purchases: {(df_clean['verified_purchase'] == True).sum() / len(df_clean) * 100:.1f}%")
+
+print("\n3. Product Insights:")
+print(f"   â€¢ Average price: ${df_clean['price'].mean():.2f}")
+print(f"   â€¢ Average number of reviews per product: {df_clean['num_reviews'].mean():.0f}")
+print(f"   â€¢ Average discount: {df_clean['discount_percentage'].mean():.1f}%")
+
+print("\n4. Correlations:")
+print(f"   â€¢ Rating <-> Review Length: {pearsonr(df_clean['review_length'], df_clean['rating'])[0]:.3f}")
+print(f"   â€¢ Rating <-> Helpful Votes: {pearsonr(df_clean['rating'], df_clean['helpful_votes'])[0]:.3f}")
+print(f"   â€¢ Price <-> Num Reviews: {pearsonr(df_clean['price'], df_clean['num_reviews'])[0]:.3f}")
+
+print("\n5. Statistical Tests:")
+print(f"   â€¢ Verified vs Non-verified ratings: {'Significant' if p_value_ttest < 0.05 else 'Not significant'} difference")
+print(f"   â€¢ Ratings across categories: {'Significant' if p_value_anova < 0.05 else 'Not significant'} difference")
+print(f"   â€¢ Review length-rating correlation: {'Significant' if p_value_corr < 0.05 else 'Not significant'}")
+```
+
+---
+
+## Step 13: Export Cleaned Data and Results
+
+```python
+print("\n" + "=" * 70)
+print("STEP 13: EXPORTING RESULTS")
+print("=" * 70)
+
+# Save cleaned dataset
+df_clean.to_csv('amazon_reviews_cleaned.csv', index=False)
+print("\nâœ… Cleaned dataset saved as 'amazon_reviews_cleaned.csv'")
+
+# Save correlation matrix
+correlation_matrix.to_csv('correlation_matrix.csv')
+print("âœ… Correlation matrix saved as 'correlation_matrix.csv'")
+
+# Save summary statistics
+summary_stats = df_clean.describe()
+summary_stats.to_csv('summary_statistics.csv')
+print("âœ… Summary statistics saved as 'summary_statistics.csv'")
+
+# Create insights report
+insights_report = {
+    'Metric': ['Mean Rating', 'Median Rating', 'Total Products', 
+               'Avg Review Length', 'Avg Helpful Votes', 'Verified Purchase %',
+               'Avg Price', 'Avg Discount %'],
+    'Value': [
+        f"{df_clean['rating'].mean():.2f}",
+        f"{df_clean['rating'].median():.0f}",
+        f"{len(df_clean)}",
+        f"{df_clean['review_length'].mean():.0f}",
+        f"{df_clean['helpful_votes'].mean():.1f}",
+        f"{(df_clean['verified_purchase'] == True).sum() / len(df_clean) * 100:.1f}%",
+        f"${df_clean['price'].mean():.2f}",
+        f"{df_clean['discount_percentage'].mean():.1f}%"
+    ]
+}
+
+insights_df = pd.DataFrame(insights_report)
+insights_df.to_csv('key_insights.csv', index=False)
+print("âœ… Key insights saved as 'key_insights.csv'")
+
+print("\n" + "=" * 70)
+print("âœ… EXPLORATORY DATA ANALYSIS COMPLETED SUCCESSFULLY!")
+print("=" * 70)
+print("\nAll visualizations, cleaned data, and analysis results have been saved.")
+print("Review the generated files for comprehensive insights from the EDA process.")
+```
+
+---
+
+## Additional Advanced Analysis (Optional)
+
+```python
+# Advanced Analysis: Category-wise statistics
+print("\n" + "=" * 70)
+print("ADVANCED ANALYSIS: CATEGORY-WISE DETAILED STATISTICS")
+print("=" * 70)
+
+category_stats = df_clean.groupby('product_category').agg({
+    'rating': ['mean', 'median', 'std', 'count'],
+    'price': ['mean', 'median'],
+    'helpful_votes': ['mean', 'median'],
+    'num_reviews': ['mean', 'median']
+}).round(2)
+
+print("\nðŸ“Š Category-wise Statistics:")
+print(category_stats)
+
+# Save to CSV
+category_stats.to_csv('category_statistics.csv')
+print("\nâœ… Category statistics saved as 'category_statistics.csv'")
+
+# Price range analysis
+print("\nðŸ“Š Price Range Analysis:")
+price_ranges = pd.cut(df_clean['price'], bins=[0, 100, 200, 300, 400, 500], 
+                      labels=['$0-100', '$100-200', '$200-300', '$300-400', '$400-500'])
+price_range_stats = df_clean.groupby(price_ranges)['rating'].agg(['mean', 'count'])
+print(price_range_stats)
+
+# Visualization
+plt.figure(figsize=(12, 6))
+plt.bar(range(len(price_range_stats)), price_range_stats['mean'], 
+        color='teal', edgecolor='black', alpha=0.7)
+plt.xlabel('Price Range', fontsize=12)
+plt.ylabel('Average Rating', fontsize=12)
+plt.title('Average Rating by Price Range', fontsize=14, fontweight='bold')
+plt.xticks(range(len(price_range_stats)), price_range_stats.index, rotation=45)
+plt.ylim(0, 5)
+plt.grid(axis='y', alpha=0.3)
+
+# Add count labels
+for i, (mean, count) in enumerate(zip(price_range_stats['mean'], price_range_stats['count'])):
+    plt.text(i, mean + 0.1, f'{mean:.2f}\n(n={count})', ha='center', fontsize=9)
+
+plt.tight_layout()
+plt.savefig('rating_by_price_range.png', dpi=300, bbox_inches='tight')
+plt.show()
+
+print("\nâœ… All additional analyses completed!")
+```
+
+---
+
+## Summary and Conclusion
+
+```python
+print("\n" + "=" * 70)
+print("EDA PROJECT SUMMARY")
+print("=" * 70)
+
+print("""
+This comprehensive Exploratory Data Analysis covered:
+
+âœ… Data Collection and Loading
+âœ… Initial Data Inspection
+âœ… Data Quality Assessment
+âœ… Descriptive Statistics
+âœ… Data Cleaning (Missing Values & Duplicates)
+âœ… Outlier Detection
+âœ… Univariate Analysis
+âœ… Bivariate Analysis
+âœ… Multivariate Analysis (Correlation Matrix)
+âœ… Statistical Hypothesis Testing
+âœ… Key Insights Extraction
+âœ… Results Export
+
+Key Deliverables:
+ðŸ“ Cleaned Dataset: amazon_reviews_cleaned.csv
+ðŸ“ Correlation Matrix: correlation_matrix.csv
+ðŸ“ Summary Statistics: summary_statistics.csv
+ðŸ“ Key Insights: key_insights.csv
+ðŸ“ Category Statistics: category_statistics.csv
+ðŸ“Š 10+ Visualizations saved as PNG files
+
+The analysis successfully addressed all TASK 2 requirements:
+â€¢ Asked meaningful questions about the data
+â€¢ Explored dataset through comprehensive inspection
+â€¢ Identified trends, patterns, and anomalies
+â€¢ Tested hypotheses using statistical techniques
+â€¢ Summarized findings using descriptive statistics
+
+Next Steps:
+1. Review all generated visualizations
+2. Interpret findings in business context
+3. Prepare presentation slides
+4. Consider advanced modeling (if needed)
+5. Share insights with stakeholders
+""")
+
+print("=" * 70)
+print("Thank you for using this EDA template! ðŸŽ‰")
+print("=" * 70)
+```
+
+---
+
+## END OF CODE
